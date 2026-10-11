@@ -252,17 +252,58 @@ pevent_t * pstate_idle_handler(FILE *fd, int ch)
 			}
 			break;
 		case '#' :
-
+				
 			break;
 		case '\"' :
+				if(event_data_idx) 
+				{
+					fseek(fd, -1L, SEEK_CUR); // unget chars
+					set_parser_event(PSTATE_IDLE, PEVENT_REGULAR_EXP);
+					return &pevent_data;
+				}
+				else 
+				{
+#ifdef DEBUG	
+					printf("String Littral Begin : /*\n");
+#endif
+					state = PSTATE_STRING;
+					pevent_data.data[event_data_idx++] = ch;
+				}
 			break;
 
 		case '0' ... '9' : // detect numeric constant
-			break;
-
+				if(event_data_idx) 
+				{
+					fseek(fd, -1L, SEEK_CUR); // unget chars
+					set_parser_event(PSTATE_IDLE, PEVENT_REGULAR_EXP);
+					return &pevent_data;
+				}
+				else 
+				{
+#ifdef DEBUG	
+					printf("Numeric Constant Begin : /*\n");
+#endif
+					state = PSTATE_NUMERIC_CONSTANT;
+					pevent_data.data[event_data_idx++] = ch;
+				}
+				break;
 		case 'a' ... 'z' : // could be reserved key word
-
-			break;
+				if(event_data_idx) 
+				{
+					fseek(fd, -1L, SEEK_CUR); // unget chars
+					set_parser_event(PSTATE_IDLE, PEVENT_REGULAR_EXP);
+					return &pevent_data;
+				}
+				else 
+				{
+#ifdef DEBUG	
+					printf("Keywords Begin : /*\n");
+#endif
+					state = PSTATE_RESERVE_KEYWORD;
+					pevent_data.data[event_data_idx++] = ch;
+				}
+				break;
+	
 		default : // Assuming common text starts by default.
 			pevent_data.data[event_data_idx++] = ch;
 			break;
@@ -311,6 +352,31 @@ pevent_t * pstate_reserve_keyword_handler(FILE *fd, int ch)
 	 * return event data at the end of event
 	 * else return NULL
 	 */
+	switch(ch)
+	{
+		case 'a' ... 'z':
+		case 'A' ... 'Z':
+		case '0' ... '9':
+		case '_':
+			pevent_data.data[event_data_idx++]=ch;
+		break;
+
+		default:
+			pevent_data.data[event_data_idx]='\0';
+			fseek(fd,-1l,SEEK_CUR);
+			int keyword_type = is_reserved_keyword(pevent_data.data);
+			if(keyword_type!=0)
+			{
+				pevent_data.type = keyword_type;
+				set_parser_event(PSTATE_IDLE,PEVENT_RESERVE_KEYWORD);
+			}
+			else
+			{
+				set_parser_event(PSTATE_IDLE,PEVENT_REGULAR_EXP);
+			}
+			return &pevent_data;
+	}
+	return NULL;
 }
 pevent_t * pstate_numeric_constant_handler(FILE *fd, int ch)
 {
@@ -318,6 +384,22 @@ pevent_t * pstate_numeric_constant_handler(FILE *fd, int ch)
 	 * return event data at the end of event
 	 * else return NULL
 	 */
+	switch(ch)
+	{
+		case '0' ... '9':
+			pevent_data.data[event_data_idx++] = ch;
+			break;
+		default : 
+		fseek(fd, -1L, SEEK_CUR); // unget chars
+#ifdef DEBUG	
+			printf("\nNumeric Constant end\n");
+#endif
+		
+			set_parser_event(PSTATE_IDLE, PEVENT_NUMERIC_CONSTANT);
+			return &pevent_data;
+	}
+
+	return NULL;
 }
 pevent_t * pstate_string_handler(FILE *fd, int ch)
 {
@@ -325,6 +407,21 @@ pevent_t * pstate_string_handler(FILE *fd, int ch)
 	 * return event data at the end of event
 	 * else return NULL
 	 */
+	 switch(ch)
+	{
+		case '\"':
+		pevent_data.data[event_data_idx++] = ch;
+#ifdef DEBUG	
+			printf("\nString littral end\n");
+#endif
+			set_parser_event(PSTATE_IDLE, PEVENT_STRING);
+			return &pevent_data;
+		default : 
+			pevent_data.data[event_data_idx++] = ch;
+			break;
+	}
+
+	return NULL;
 }
 
 pevent_t * pstate_single_line_comment_handler(FILE *fd, int ch)
