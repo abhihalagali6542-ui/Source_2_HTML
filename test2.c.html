@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<title>sode2html</title>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body style="background-color:lightgrey;">
+<pre>
+#include<span class="operator"><</span>stdio.h<span class="operator">></span>
+#define MAX <span class="numeric_constant">0</span>
+#define unsignedint uint
+<span class="comment">// single line coment
+</span><span class="comment">/* multiline 
+        coment*/</span>
+<span class="reserved_key1">void</span> remove_alpha<span class="symbol">(</span><span class="reserved_key1">char</span> a<span class="symbol">[</span><span class="symbol">]</span><span class="operator">,</span><span class="reserved_key1">char</span> s<span class="symbol">[</span><span class="symbol">]</span><span class="symbol">)</span><span class="symbol">
+{</span>
+	<span class="reserved_key2">for</span><span class="symbol">(</span><span class="reserved_key1">int</span> i<span class="operator">=</span><span class="numeric_constant">0</span>;a<span class="symbol">[</span>i<span class="symbol">]</span><span class="operator">!</span><span class="operator">=</span><span class="numeric_constant">0</span>;i<span class="operator">+</span><span class="operator">+</span><span class="symbol">)</span><span class="symbol">
+	{</span>
+		<span class="reserved_key2">for</span><span class="symbol">(</span><span class="reserved_key1">int</span> j<span class="operator">=</span><span class="numeric_constant">0</span>;s<span class="symbol">[</span>j<span class="symbol">]</span><span class="operator">!</span><span class="operator">=</span><span class="numeric_constant">0</span>;j<span class="operator">+</span><span class="operator">+</span><span class="symbol">)</span><span class="symbol">
+		{</span>
+			<span class="reserved_key2">if</span><span class="symbol">(</span>a<span class="symbol">[</span>i<span class="symbol">]</span><span class="operator">=</span><span class="operator">=</span>s<span class="symbol">[</span>j<span class="symbol">]</span><span class="operator"> &</span><span class="operator">&</span> a<span class="symbol">[</span>i<span class="symbol">]</span><span class="operator">!</span><span class="operator">=</span><span class="ascii_char">' '</span><span class="symbol">)</span><span class="symbol">
+			{</span>
+				<span class="reserved_key2">for</span><span class="symbol">(</span><span class="reserved_key1">int</span> k<span class="operator">=</span>i;a<span class="symbol">[</span>k<span class="symbol">]</span><span class="operator">!</span><span class="operator">=</span><span class="numeric_constant">0</span>;k<span class="operator">+</span><span class="operator">+</span><span class="symbol">)</span><span class="symbol">
+				{</span>
+					a<span class="symbol">[</span>k<span class="symbol">]</span><span class="operator">=</span>a<span class="symbol">[</span>k<span class="operator">+</span><span class="numeric_constant">1</span><span class="symbol">]</span><span class="symbol">;
+				}</span>
+				i<span class="operator">-</span><span class="operator">-</span>;
+				<span class="reserved_key2">break</span><span class="symbol">;
+			}</span><span class="symbol">
+		}</span><span class="symbol">
+	}</span><span class="symbol">
+}</span>
+<span class="reserved_key1">int</span> main<span class="symbol">(</span><span class="symbol">)</span><span class="symbol">
+{</span>
+	<span class="reserved_key1">char</span> alp<span class="symbol">[</span><span class="numeric_constant">100</span><span class="symbol">]</span><span class="operator">=</span><span class="string">"abcdefghijklmnopqrstuvwxyz"</span>;
+	<span class="reserved_key1">char</span> str<span class="symbol">[</span><span class="numeric_constant">50</span><span class="symbol">]</span>;
+	scanf<span class="symbol">(</span><span class="string">"%[^\n]"</span><span class="operator">,</span>str<span class="symbol">)</span>;
+	remove_alpha<span class="symbol">(</span>alp<span class="operator">,</span>str<span class="symbol">)</span>;
+	printf<span class="symbol">(</span><span class="string">"%s"</span><span class="operator">,</span>alp<span class="symbol">)</span><span class="symbol">;
+}</span>
+</pre>
+</body>
+</html>

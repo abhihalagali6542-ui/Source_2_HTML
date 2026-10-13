@@ -7,6 +7,8 @@
 #define SIZE_OF_OPERATORS (sizeof(operators))
 #define WORD_BUFF_SIZE	100
 
+//---------------------------------------------------------------------------------//
+
 /********** Internal states and event of parser **********/
 typedef enum
 {
@@ -21,8 +23,10 @@ typedef enum
 	PSTATE_STRING,
 	PSTATE_SINGLE_LINE_COMMENT,
 	PSTATE_MULTI_LINE_COMMENT,
-	PSTATE_ASCII_CHAR
+	PSTATE_ASCII_CHAR,
 }pstate_e;
+
+//---------------------------------------------------------------------------------//
 
 /********** global variables **********/
 
@@ -39,6 +43,7 @@ static int event_data_idx=0;
 static char word[WORD_BUFF_SIZE];
 static int word_idx=0;
 
+//---------------------------------------------------------------------------------//
 
 static char* res_kwords_data[] = {"const", "volatile", "extern", "auto", "register",
    						   "static", "signed", "unsigned", "short", "long", 
@@ -46,13 +51,22 @@ static char* res_kwords_data[] = {"const", "volatile", "extern", "auto", "regist
 						   "union", "enum", "void", "typedef", ""
 						  };
 
+//---------------------------------------------------------------------------------//
+
 static char* res_kwords_non_data[] = {"goto", "return", "continue", "break", 
 							   "if", "else", "for", "while", "do", 
 							   "switch", "case", "default","sizeof", ""
-							  };
+
+							};
+//---------------------------------------------------------------------------------//
 
 static char operators[] = {'/', '+', '*', '-', '%', '=', '<', '>', '~', '&', ',', '!', '^', '|'};
-static char symbols[] = {'(', ')', '{', '[', ':'};
+
+//---------------------------------------------------------------------------------//
+
+static char symbols[] = {'(', ')', '{', '[', ':','}',']'};
+
+//---------------------------------------------------------------------------------//
 
 /********** state handlers **********/
 pevent_t * pstate_idle_handler(FILE *fd, int ch);
@@ -65,6 +79,8 @@ pevent_t * pstate_ascii_char_handler(FILE *fd, int ch);
 pevent_t * pstate_reserve_keyword_handler(FILE *fd, int ch);
 pevent_t * pstate_preprocessor_directive_handler(FILE *fd, int ch);
 pevent_t * pstate_sub_preprocessor_main_handler(FILE *fd, int ch);
+
+//---------------------------------------------------------------------------------//
 
 /********** Utility functions **********/
 
@@ -91,6 +107,8 @@ static int is_reserved_keyword(char *word)
 	return 0; // word did not match, return false
 }
 
+//---------------------------------------------------------------------------------//
+
 /* function to check symbols */
 static int is_symbol(char c)
 {
@@ -103,6 +121,8 @@ static int is_symbol(char c)
 
 	return 0;
 }
+
+//---------------------------------------------------------------------------------//
 
 /* function to check operator */
 static int is_operator(char c)
@@ -117,6 +137,8 @@ static int is_operator(char c)
 	return 0;
 }
 
+//---------------------------------------------------------------------------------//
+
 /* to set parser event */
 static void set_parser_event(pstate_e s, pevent_e e)
 {
@@ -126,6 +148,8 @@ static void set_parser_event(pstate_e s, pevent_e e)
 	state = s;
 	pevent_data.type = e;
 }
+
+//---------------------------------------------------------------------------------//
 
 
 /************ Event functions **********/
@@ -194,6 +218,7 @@ pevent_t *get_parser_event(FILE *fd)
 	return &pevent_data; // return final event
 }
 
+//---------------------------------------------------------------------------------//
 
 /********** IDLE state Handler **********
  * Idle state handler identifies
@@ -204,7 +229,21 @@ pevent_t * pstate_idle_handler(FILE *fd, int ch)
 	int pre_ch;
 	switch(ch)
 	{
-		case '\'' : // begining of ASCII char 
+		case '\'' : // begining of ASCII char
+			if(event_data_idx)
+			{
+				fseek(fd,-1l,SEEK_CUR);
+				set_parser_event(PSTATE_IDLE,PEVENT_ASCII_CHAR);
+				return &pevent_data;
+			} 
+			else
+			{
+	#ifdef DEBUG	
+					printf("ASCII char Begin : /*\n");
+	#endif
+				state = PSTATE_ASCII_CHAR;
+				pevent_data.data[event_data_idx++]=ch;
+			}
 			break;
 
 		case '/' :
@@ -219,9 +258,9 @@ pevent_t * pstate_idle_handler(FILE *fd, int ch)
 				}
 				else //	multi line comment begin 
 				{
-#ifdef DEBUG	
-					printf("Multi line comment Begin : /*\n");
-#endif
+	#ifdef DEBUG	
+						printf("Multi line comment Begin : /*\n");
+	#endif
 					state = PSTATE_MULTI_LINE_COMMENT;
 					pevent_data.data[event_data_idx++] = pre_ch;
 					pevent_data.data[event_data_idx++] = ch;
@@ -237,9 +276,9 @@ pevent_t * pstate_idle_handler(FILE *fd, int ch)
 				}
 				else //	single line comment begin
 				{
-#ifdef DEBUG	
-					printf("Single line comment Begin : //\n");
-#endif
+	#ifdef DEBUG	
+						printf("Single line comment Begin : //\n");
+	#endif
 					state = PSTATE_SINGLE_LINE_COMMENT;
 					pevent_data.data[event_data_idx++] = pre_ch;
 					pevent_data.data[event_data_idx++] = ch;
@@ -252,8 +291,23 @@ pevent_t * pstate_idle_handler(FILE *fd, int ch)
 			}
 			break;
 		case '#' :
-				
+			if(event_data_idx) 
+				{
+					fseek(fd, -1L, SEEK_CUR); // unget chars
+					set_parser_event(PSTATE_IDLE, PEVENT_REGULAR_EXP);
+					return &pevent_data;
+				}
+				else 
+				{
+	#ifdef DEBUG	
+						printf("header file Begin : /*\n");
+	#endif
+					pevent_data.data[event_data_idx++] = ch;
+					state = PSTATE_PREPROCESSOR_DIRECTIVE;
+					state_sub = PSTATE_SUB_PREPROCESSOR_MAIN;			
+				}
 			break;
+
 		case '\"' :
 				if(event_data_idx) 
 				{
@@ -263,9 +317,9 @@ pevent_t * pstate_idle_handler(FILE *fd, int ch)
 				}
 				else 
 				{
-#ifdef DEBUG	
-					printf("String Littral Begin : /*\n");
-#endif
+	#ifdef DEBUG	
+						printf("String literal Begin : /*\n");
+	#endif
 					state = PSTATE_STRING;
 					pevent_data.data[event_data_idx++] = ch;
 				}
@@ -280,9 +334,9 @@ pevent_t * pstate_idle_handler(FILE *fd, int ch)
 				}
 				else 
 				{
-#ifdef DEBUG	
-					printf("Numeric Constant Begin : /*\n");
-#endif
+	#ifdef DEBUG	
+						printf("Numeric Constant Begin : /*\n");
+	#endif
 					state = PSTATE_NUMERIC_CONSTANT;
 					pevent_data.data[event_data_idx++] = ch;
 				}
@@ -296,24 +350,40 @@ pevent_t * pstate_idle_handler(FILE *fd, int ch)
 				}
 				else 
 				{
-#ifdef DEBUG	
-					printf("Keywords Begin : /*\n");
-#endif
+	#ifdef DEBUG	
+						printf("Keywords Begin : /*\n");
+	#endif
 					state = PSTATE_RESERVE_KEYWORD;
 					pevent_data.data[event_data_idx++] = ch;
 				}
 				break;
 	
 		default : // Assuming common text starts by default.
+				if(strchr(symbols,ch)!=NULL)
+				{
+					pevent_data.data[event_data_idx++] = ch;
+					set_parser_event(PSTATE_IDLE, PEVENT_SYMBOLS);
+					return &pevent_data;
+				}
+				else if(strchr(operators ,ch)!=NULL)
+				{
+					pevent_data.data[event_data_idx++] = ch;
+					set_parser_event(PSTATE_IDLE,PEVENT_OPERATOR);
+					return &pevent_data;
+				}
+
 			pevent_data.data[event_data_idx++] = ch;
 			break;
 	}
 
 	return NULL;
 }
+
+//---------------------------------------------------------------------------------//
+
 pevent_t * pstate_preprocessor_directive_handler(FILE *fd, int ch)
 {
-	int tch;
+	//int tch;
 	switch(state_sub)
 	{
 		case PSTATE_SUB_PREPROCESSOR_MAIN :
@@ -329,6 +399,9 @@ pevent_t * pstate_preprocessor_directive_handler(FILE *fd, int ch)
 
 	return NULL;
 }
+
+//---------------------------------------------------------------------------------//
+
 pevent_t * pstate_sub_preprocessor_main_handler(FILE *fd, int ch)
 {
 	/* write a switch case here to detect several events here
@@ -337,7 +410,78 @@ pevent_t * pstate_sub_preprocessor_main_handler(FILE *fd, int ch)
 	 * return event data at the end of event
 	 * else return NULL
 	 */
+	 switch(ch)
+	 {
+		case '\t':
+		case ' ':
+			if (event_data_idx)
+            {
+               // fseek(fd, -1L, SEEK_CUR);
+                set_parser_event(PSTATE_PREPROCESSOR_DIRECTIVE,PEVENT_PREPROCESSOR_DIRECTIVE);
+                return &pevent_data;
+            }
+		pevent_data.data[event_data_idx++] = ch;
+
+        break;
+
+		case '"':
+		case '<':
+			if (event_data_idx)
+            {
+				fseek(fd, -1L, SEEK_CUR);
+                set_parser_event(PSTATE_PREPROCESSOR_DIRECTIVE,PEVENT_PREPROCESSOR_DIRECTIVE);
+				event_data_idx=0;
+                return &pevent_data;
+            }
+		    pevent_data.property = (ch == '<') ? STD_HEADER_FILE : USER_HEADER_FILE; 
+			state = PSTATE_HEADER_FILE;
+		break;
+		case 'a'...'z':
+			if(event_data_idx) 
+				{
+					fseek(fd, -1L, SEEK_CUR); // unget chars
+					set_parser_event(PSTATE_IDLE, PEVENT_REGULAR_EXP);
+					return &pevent_data;
+				}
+				else 
+				{
+					state = PSTATE_SUB_PREPROCESSOR_RESERVE_KEYWORD;
+					pevent_data.data[event_data_idx++] = ch;
+				}
+		break;
+		case '0'...'9':
+			if(event_data_idx) 
+				{
+					fseek(fd, -1L, SEEK_CUR); // unget chars
+					set_parser_event(PSTATE_IDLE, PEVENT_REGULAR_EXP);
+					return &pevent_data;
+				}
+				else 
+				{
+					state = PSTATE_SUB_PREPROCESSOR_ASCII_CHAR;
+					pevent_data.data[event_data_idx++] = ch;
+				}
+		break;
+
+		case '\n':
+			if (event_data_idx)
+            {
+                pevent_data.data[event_data_idx++] = ch;
+                set_parser_event(PSTATE_IDLE, PEVENT_REGULAR_EXP);
+                return &pevent_data;
+            }
+            state = PSTATE_IDLE;
+        break;
+
+        default:
+            pevent_data.data[event_data_idx++] = ch;
+        break;
+    }
+
+    return NULL;
 }
+
+//---------------------------------------------------------------------------------//
 
 pevent_t * pstate_header_file_handler(FILE *fd, int ch)
 {
@@ -345,7 +489,41 @@ pevent_t * pstate_header_file_handler(FILE *fd, int ch)
 	 * return event data at the end of event
 	 * else return NULL
 	 */
+	 switch(ch)
+	 {
+		/*case '\n':
+			pevent_data.data[event_data_idx++]=ch;
+			set_parser_event(PSTATE_IDLE,PEVENT_PREPROCESSOR_DIRECTIVE);
+			return &pevent_data;
+		break;*/
+		case '>':
+			if(pevent_data.property == STD_HEADER_FILE)
+			{
+				pevent_data.property = STD_HEADER_FILE;
+				set_parser_event(PSTATE_PREPROCESSOR_DIRECTIVE, PEVENT_HEADER_FILE);
+				return &pevent_data;
+			}
+			pevent_data.data[event_data_idx++]=ch;
+		break;
+
+        case '"':
+            if(pevent_data.property == USER_HEADER_FILE)
+			{
+					pevent_data.property = USER_HEADER_FILE;
+					set_parser_event(PSTATE_PREPROCESSOR_DIRECTIVE, PEVENT_HEADER_FILE);
+					return &pevent_data;
+			}
+			pevent_data.data[event_data_idx++]=ch;
+            break;
+		default:
+			pevent_data.data[event_data_idx++]=ch;
+		break;
+	 }
+	 return NULL;
 }
+
+//---------------------------------------------------------------------------------//
+
 pevent_t * pstate_reserve_keyword_handler(FILE *fd, int ch)
 {
 	/* write a switch case here to store words
@@ -365,9 +543,10 @@ pevent_t * pstate_reserve_keyword_handler(FILE *fd, int ch)
 			pevent_data.data[event_data_idx]='\0';
 			fseek(fd,-1l,SEEK_CUR);
 			int keyword_type = is_reserved_keyword(pevent_data.data);
-			if(keyword_type!=0)
+			//printf("%d\n",keyword_type);
+			if(keyword_type)
 			{
-				pevent_data.type = keyword_type;
+				pevent_data.property=keyword_type;
 				set_parser_event(PSTATE_IDLE,PEVENT_RESERVE_KEYWORD);
 			}
 			else
@@ -378,6 +557,9 @@ pevent_t * pstate_reserve_keyword_handler(FILE *fd, int ch)
 	}
 	return NULL;
 }
+
+//---------------------------------------------------------------------------------//
+
 pevent_t * pstate_numeric_constant_handler(FILE *fd, int ch)
 {
 	/* write a switch case here to store digits
@@ -391,9 +573,9 @@ pevent_t * pstate_numeric_constant_handler(FILE *fd, int ch)
 			break;
 		default : 
 		fseek(fd, -1L, SEEK_CUR); // unget chars
-#ifdef DEBUG	
+	#ifdef DEBUG	
 			printf("\nNumeric Constant end\n");
-#endif
+	#endif
 		
 			set_parser_event(PSTATE_IDLE, PEVENT_NUMERIC_CONSTANT);
 			return &pevent_data;
@@ -401,6 +583,9 @@ pevent_t * pstate_numeric_constant_handler(FILE *fd, int ch)
 
 	return NULL;
 }
+
+//---------------------------------------------------------------------------------//
+
 pevent_t * pstate_string_handler(FILE *fd, int ch)
 {
 	/* write a switch case here to store string
@@ -411,9 +596,9 @@ pevent_t * pstate_string_handler(FILE *fd, int ch)
 	{
 		case '\"':
 		pevent_data.data[event_data_idx++] = ch;
-#ifdef DEBUG	
-			printf("\nString littral end\n");
-#endif
+	#ifdef DEBUG	
+			printf("\nString literal end\n");
+	#endif
 			set_parser_event(PSTATE_IDLE, PEVENT_STRING);
 			return &pevent_data;
 		default : 
@@ -424,15 +609,17 @@ pevent_t * pstate_string_handler(FILE *fd, int ch)
 	return NULL;
 }
 
+//---------------------------------------------------------------------------------//
+
 pevent_t * pstate_single_line_comment_handler(FILE *fd, int ch)
 {
 	int pre_ch;
 	switch(ch)
 	{
 		case '\n' : /* single line comment ends here */
-#ifdef DEBUG	
+	#ifdef DEBUG	
 			printf("\nSingle line comment end\n");
-#endif
+	#endif
 			pre_ch = ch;
 			pevent_data.data[event_data_idx++] = ch;
 			set_parser_event(PSTATE_IDLE, PEVENT_SINGLE_LINE_COMMENT);
@@ -444,6 +631,9 @@ pevent_t * pstate_single_line_comment_handler(FILE *fd, int ch)
 
 	return NULL;
 }
+
+//---------------------------------------------------------------------------------//
+
 pevent_t * pstate_multi_line_comment_handler(FILE *fd, int ch)
 {
 	int pre_ch;
@@ -454,9 +644,9 @@ pevent_t * pstate_multi_line_comment_handler(FILE *fd, int ch)
 			pevent_data.data[event_data_idx++] = ch;
 			if((ch = fgetc(fd)) == '/')
 			{
-#ifdef DEBUG	
+	#ifdef DEBUG	
 				printf("\nMulti line comment End : */\n");
-#endif
+	#endif
 				pre_ch = ch;
 				pevent_data.data[event_data_idx++] = ch;
 				set_parser_event(PSTATE_IDLE, PEVENT_MULTI_LINE_COMMENT);
@@ -487,11 +677,32 @@ pevent_t * pstate_multi_line_comment_handler(FILE *fd, int ch)
 
 	return NULL;
 }
+
+//---------------------------------------------------------------------------------//
+
 pevent_t * pstate_ascii_char_handler(FILE *fd, int ch)
 {
 	/* write a switch case here to store ASCII chars
 	 * return event data at the end of event
 	 * else return NULL
 	 */
+	 switch(ch)
+	 {
+		case '\'':
+			pevent_data.data[event_data_idx++]=ch;
+	#ifdef DEBUG	
+			printf("\nASCII char end\n");
+	#endif
+		set_parser_event(PSTATE_IDLE,PEVENT_ASCII_CHAR);
+		return &pevent_data;
+		break;
+
+		default:
+			pevent_data.data[event_data_idx++]=ch;
+		break;
+	 }
+	 return NULL;
 }
 /**** End of file ****/
+
+//---------------------------------------------------------------------------------//

@@ -71,6 +71,12 @@ void source_to_html(FILE* fp, pevent_t *event)
 		case PEVENT_ASCII_CHAR:
 			fprintf(fp,"<span class=\"ascii_char\">%s</span>",event->data);
 			break;
+		case PEVENT_SYMBOLS:
+			fprintf(fp,"<span class=\"symbol\">%s</span>",event->data);
+		break;
+		case PEVENT_OPERATOR:
+			fprintf(fp,"<span class=\"operator\">%s</span>",event->data);
+		break;
 		default :
 			printf("Unknow event\n");
 			break;

@@ -8,8 +8,23 @@
 <body style="background-color:lightgrey;">
 <pre>
 <span class="comment">/* this is multi-line comment */</span>
-<span class="reserved_key2">int</span> main
-<span class="numeric_constant">100</span>;
-<span class="string">"hello hi"</span></pre>
+<span class="header_file">&lt;#includestdio.h&gt;</span><span class="reserved_key1">int</span> main<span class="symbol">(</span><span class="symbol">)</span><span class="symbol">
+{</span>
+	<span class="reserved_key1">char</span> ch<span class="operator"> =</span><span class="ascii_char"> </span><span class="ascii_char">'A'</span>;
+	<span class="reserved_key1">int</span> i<span class="operator">,</span>j<span class="operator">,</span>num<span class="operator">,</span>temp;
+	scanf<span class="symbol">(</span><span class="string">"%d"</span><span class="operator">,</span><span class="operator">&</span>num<span class="symbol">)</span>;
+	temp<span class="operator">=</span>num;
+	<span class="reserved_key2">for</span><span class="symbol">(</span>i<span class="operator">=</span><span class="numeric_constant">1</span>;i<span class="operator"><</span><span class="operator">=</span>num;i<span class="operator">+</span><span class="operator">+</span><span class="symbol">)</span><span class="symbol">
+	{</span>
+		<span class="reserved_key2">for</span><span class="symbol">(</span>j<span class="operator">=</span>num;j<span class="operator"><</span><span class="operator">=</span>i;j<span class="operator">-</span><span class="operator">-</span><span class="symbol">)</span><span class="symbol">
+		{</span>
+			printf<span class="symbol">(</span><span class="string">"%d "</span><span class="operator">,</span>j<span class="symbol">)</span><span class="symbol">;
+		}</span>
+		printf<span class="symbol">(</span><span class="string">"\n"</span><span class="symbol">)</span><span class="symbol">;
+	}</span><span class="symbol">
+}</span>
+<span class="comment">//single line comment
+</span>	
+</pre>
 </body>
 </html>

@@ -2,10 +2,10 @@
    		color:green;
 	      }
 .reserved_key2{
-    		color:goldenrod;
+    		color:rgb(120, 15, 161);
 	      }
 .comment{
-    		color:blue;
+    		color:rgba(72, 72, 143, 0.515);
         }
 .preprocess_dir{
     		color:purple;
@@ -22,4 +22,11 @@
 .ascii_char{
     		 color:firebrick;
 	        }
+.operator{
+    		  color:rgb(10, 3, 109);
+	        }
+.symbol{
+			 color:rgba(222, 107, 7, 0.692);
+	        }
+	
 
