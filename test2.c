@@ -1,6 +1,7 @@
 #include<stdio.h>
+#include"string.h"
 #define MAX 0
-#define unsignedint uint
+#define unsigned int uint
 // single line coment
 /* multiline 
         coment*/

@@ -303,6 +303,7 @@ pevent_t * pstate_idle_handler(FILE *fd, int ch)
 						printf("header file Begin : /*\n");
 	#endif
 					pevent_data.data[event_data_idx++] = ch;
+					pevent_data.property =0;
 					state = PSTATE_PREPROCESSOR_DIRECTIVE;
 					state_sub = PSTATE_SUB_PREPROCESSOR_MAIN;			
 				}
@@ -342,6 +343,8 @@ pevent_t * pstate_idle_handler(FILE *fd, int ch)
 				}
 				break;
 		case 'a' ... 'z' : // could be reserved key word
+		case 'A' ... 'Z' :
+		case '_' :
 				if(event_data_idx) 
 				{
 					fseek(fd, -1L, SEEK_CUR); // unget chars
@@ -412,70 +415,29 @@ pevent_t * pstate_sub_preprocessor_main_handler(FILE *fd, int ch)
 	 */
 	 switch(ch)
 	 {
+		case 'a' ... 'z' : 
+		case 'A' ... 'Z' :
+			pevent_data.data[event_data_idx++]=ch;
+		break;
+
 		case '\t':
 		case ' ':
-			if (event_data_idx)
-            {
-               // fseek(fd, -1L, SEEK_CUR);
-                set_parser_event(PSTATE_PREPROCESSOR_DIRECTIVE,PEVENT_PREPROCESSOR_DIRECTIVE);
-                return &pevent_data;
-            }
-		pevent_data.data[event_data_idx++] = ch;
-
-        break;
-
-		case '"':
-		case '<':
-			if (event_data_idx)
-            {
-				fseek(fd, -1L, SEEK_CUR);
-                set_parser_event(PSTATE_PREPROCESSOR_DIRECTIVE,PEVENT_PREPROCESSOR_DIRECTIVE);
-				event_data_idx=0;
-                return &pevent_data;
-            }
-		    pevent_data.property = (ch == '<') ? STD_HEADER_FILE : USER_HEADER_FILE; 
-			state = PSTATE_HEADER_FILE;
-		break;
-		case 'a'...'z':
-			if(event_data_idx) 
-				{
-					fseek(fd, -1L, SEEK_CUR); // unget chars
-					set_parser_event(PSTATE_IDLE, PEVENT_REGULAR_EXP);
-					return &pevent_data;
-				}
-				else 
-				{
-					state = PSTATE_SUB_PREPROCESSOR_RESERVE_KEYWORD;
-					pevent_data.data[event_data_idx++] = ch;
-				}
-		break;
-		case '0'...'9':
-			if(event_data_idx) 
-				{
-					fseek(fd, -1L, SEEK_CUR); // unget chars
-					set_parser_event(PSTATE_IDLE, PEVENT_REGULAR_EXP);
-					return &pevent_data;
-				}
-				else 
-				{
-					state = PSTATE_SUB_PREPROCESSOR_ASCII_CHAR;
-					pevent_data.data[event_data_idx++] = ch;
-				}
-		break;
-
-		case '\n':
-			if (event_data_idx)
-            {
-                pevent_data.data[event_data_idx++] = ch;
-                set_parser_event(PSTATE_IDLE, PEVENT_REGULAR_EXP);
-                return &pevent_data;
-            }
-            state = PSTATE_IDLE;
-        break;
+			pevent_data.data[event_data_idx++]=ch;
 
         default:
-            pevent_data.data[event_data_idx++] = ch;
-        break;
+			fseek(fd,-1L,SEEK_CUR);
+            pevent_data.data[event_data_idx++] = '\0';
+			state_sub = PSTATE_SUB_PREPROCESSOR_MAIN;
+			if(strstr(pevent_data.data,"include"))
+			{
+				pevent_data.property=0;
+				set_parser_event(PSTATE_HEADER_FILE, PEVENT_PREPROCESSOR_DIRECTIVE);
+			}
+			else
+			{
+				set_parser_event(PSTATE_IDLE, PEVENT_PREPROCESSOR_DIRECTIVE);
+			}
+			return &pevent_data;
     }
 
     return NULL;
@@ -489,37 +451,77 @@ pevent_t * pstate_header_file_handler(FILE *fd, int ch)
 	 * return event data at the end of event
 	 * else return NULL
 	 */
-	 switch(ch)
-	 {
-		/*case '\n':
-			pevent_data.data[event_data_idx++]=ch;
-			set_parser_event(PSTATE_IDLE,PEVENT_PREPROCESSOR_DIRECTIVE);
-			return &pevent_data;
-		break;*/
-		case '>':
-			if(pevent_data.property == STD_HEADER_FILE)
+	switch(pevent_data.property)
+	{
+		case 0:
+			switch(ch)
 			{
-				pevent_data.property = STD_HEADER_FILE;
-				set_parser_event(PSTATE_PREPROCESSOR_DIRECTIVE, PEVENT_HEADER_FILE);
-				return &pevent_data;
-			}
-			pevent_data.data[event_data_idx++]=ch;
-		break;
+				case ' ' :
+				case '\t':
+					pevent_data.data[event_data_idx++]=ch;
+				break;
+				
+				case '<' :
+				case '"' :
+					if(event_data_idx) 
+					{
+						fseek(fd, -1L, SEEK_CUR); // unget chars
+						set_parser_event(PSTATE_IDLE, PEVENT_REGULAR_EXP);
+						return &pevent_data;
+					}		
+					pevent_data.property = (ch=='<')? STD_HEADER_FILE : USER_HEADER_FILE;
+					if(ch == '"')
+					{
+						pevent_data.data[event_data_idx++]=ch;
+					}
+				break;
 
-        case '"':
-            if(pevent_data.property == USER_HEADER_FILE)
-			{
-					pevent_data.property = USER_HEADER_FILE;
-					set_parser_event(PSTATE_PREPROCESSOR_DIRECTIVE, PEVENT_HEADER_FILE);
-					return &pevent_data;
+				default:
+					state = PSTATE_IDLE;
+					fseek(fd,-1L,SEEK_CUR);
+					if(event_data_idx) 
+					{
+						set_parser_event(PSTATE_IDLE, PEVENT_REGULAR_EXP);
+						return &pevent_data;
+					}
+					break;
 			}
-			pevent_data.data[event_data_idx++]=ch;
-            break;
+			break;
+
 		default:
-			pevent_data.data[event_data_idx++]=ch;
-		break;
-	 }
-	 return NULL;
+			switch(ch)
+			{
+				case '>':
+					if(pevent_data.property == STD_HEADER_FILE)
+					{
+						set_parser_event(PSTATE_IDLE, PEVENT_HEADER_FILE);
+						return &pevent_data;
+					}
+					pevent_data.data[event_data_idx++] = ch;
+					break;
+ 
+				case '"':
+					pevent_data.data[event_data_idx++] = ch;
+					if(pevent_data.property == USER_HEADER_FILE)
+					{
+						set_parser_event(PSTATE_IDLE, PEVENT_HEADER_FILE);
+						return &pevent_data;
+					}
+					break;
+ 
+				case '\n': // unterminated name, stop at end of line
+					fseek(fd, -1L, SEEK_CUR);
+					set_parser_event(PSTATE_IDLE, PEVENT_HEADER_FILE);
+					return &pevent_data;
+ 
+				default:
+					if(event_data_idx < PEVENT_DATA_SIZE - 1)
+						pevent_data.data[event_data_idx++] = ch;
+					break;
+			}
+			break;
+	}
+	return NULL;
 }
 
 //---------------------------------------------------------------------------------//
