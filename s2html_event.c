@@ -466,7 +466,7 @@ pevent_t * pstate_header_file_handler(FILE *fd, int ch)
 					if(event_data_idx) 
 					{
 						fseek(fd, -1L, SEEK_CUR); // unget chars
-						set_parser_event(PSTATE_IDLE, PEVENT_REGULAR_EXP);
+						set_parser_event(PSTATE_HEADER_FILE, PEVENT_REGULAR_EXP);
 						return &pevent_data;
 					}		
 					pevent_data.property = (ch=='<')? STD_HEADER_FILE : USER_HEADER_FILE;
@@ -571,8 +571,10 @@ pevent_t * pstate_numeric_constant_handler(FILE *fd, int ch)
 	switch(ch)
 	{
 		case '0' ... '9':
+		case '.' :
 			pevent_data.data[event_data_idx++] = ch;
 			break;
+			
 		default : 
 		fseek(fd, -1L, SEEK_CUR); // unget chars
 	#ifdef DEBUG	
