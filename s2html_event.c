@@ -233,7 +233,7 @@ pevent_t * pstate_idle_handler(FILE *fd, int ch)
 			if(event_data_idx)
 			{
 				fseek(fd,-1l,SEEK_CUR);
-				set_parser_event(PSTATE_IDLE,PEVENT_ASCII_CHAR);
+				set_parser_event(PSTATE_IDLE,PEVENT_REGULAR_EXP);
 				return &pevent_data;
 			} 
 			else
@@ -362,19 +362,6 @@ pevent_t * pstate_idle_handler(FILE *fd, int ch)
 				break;
 	
 		default : // Assuming common text starts by default.
-				if(strchr(symbols,ch)!=NULL)
-				{
-					pevent_data.data[event_data_idx++] = ch;
-					set_parser_event(PSTATE_IDLE, PEVENT_SYMBOLS);
-					return &pevent_data;
-				}
-				else if(strchr(operators ,ch)!=NULL)
-				{
-					pevent_data.data[event_data_idx++] = ch;
-					set_parser_event(PSTATE_IDLE,PEVENT_OPERATOR);
-					return &pevent_data;
-				}
-
 			pevent_data.data[event_data_idx++] = ch;
 			break;
 	}
@@ -690,22 +677,38 @@ pevent_t * pstate_ascii_char_handler(FILE *fd, int ch)
 	 * return event data at the end of event
 	 * else return NULL
 	 */
-	 switch(ch)
-	 {
-		case '\'':
-			pevent_data.data[event_data_idx++]=ch;
-	#ifdef DEBUG	
-			printf("\nASCII char end\n");
-	#endif
-		set_parser_event(PSTATE_IDLE,PEVENT_ASCII_CHAR);
-		return &pevent_data;
-		break;
+static int escape = 0;
 
-		default:
-			pevent_data.data[event_data_idx++]=ch;
-		break;
-	 }
-	 return NULL;
+    switch(ch)
+    {
+        case '\\':
+            pevent_data.data[event_data_idx++] = ch;
+
+            if(!escape)
+                escape = 1;
+            else
+                escape = 0;
+            break;
+
+        case '\'':
+            pevent_data.data[event_data_idx++] = ch;
+
+            if(!escape)
+            {
+                set_parser_event(PSTATE_IDLE, PEVENT_ASCII_CHAR);
+                return &pevent_data;
+            }
+
+            escape = 0;
+            break;
+
+        default:
+            pevent_data.data[event_data_idx++] = ch;
+            escape = 0;
+            break;
+    }
+
+    return NULL;
 }
 /**** End of file ****/
 
